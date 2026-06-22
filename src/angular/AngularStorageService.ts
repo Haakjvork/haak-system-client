@@ -35,14 +35,15 @@ export class AngularSystemStorageService {
   public tokenError$ = this.tokenErrorSubject.asObservable();
 
   /**
-   * Initialize the service with a base URL
+   * Initialize the service with a base URL and optional storage ID
    * Should be called before using other methods
    * 
    * @param baseUrl - The base URL of the storage service
+   * @param id - Optional storage ID to associate with this service instance
    */
-  initialize(baseUrl: string): void {
+  initialize(baseUrl: string, id?: string): void {
     this.baseUrl = baseUrl;
-    this.storageService = new SystemStorageService(baseUrl);
+    this.storageService = new SystemStorageService(baseUrl, id);
   }
 
   /**
@@ -57,9 +58,11 @@ export class AngularSystemStorageService {
 
   /**
    * Request a token from the storage service
+   * Automatically sets the token for subsequent requests
+   * @param password - The password for authentication
    * @returns Observable of TokenResponse
    */
-  requestToken(): Observable<TokenResponse> {
+  requestToken(password: string): Observable<TokenResponse> {
     return new Observable(observer => {
       if (!this.storageService) {
         observer.error(new Error('Service not initialized'));
@@ -70,10 +73,9 @@ export class AngularSystemStorageService {
       this.tokenErrorSubject.next(null);
 
       this.storageService
-        .getToken()
+        .getToken(password)
         .then(response => {
           this.tokenSubject.next(response.token);
-          this.storageService!.setAuthToken(response.token);
           observer.next(response);
           observer.complete();
           this.tokenLoadingSubject.next(false);
@@ -89,10 +91,10 @@ export class AngularSystemStorageService {
 
   /**
    * Retrieve a storage item
-   * @param id - The ID of the item to retrieve
+   * Uses the storage ID from the service instance
    * @returns Observable of the storage item
    */
-  getItem<T = StorageItem>(id: string): Observable<T> {
+  getItem<T = StorageItem>(): Observable<T> {
     return new Observable(observer => {
       if (!this.storageService) {
         observer.error(new Error('Service not initialized'));
@@ -100,7 +102,7 @@ export class AngularSystemStorageService {
       }
 
       this.storageService
-        .getItem<T>(id)
+        .getItem<T>()
         .then(data => {
           observer.next(data);
           observer.complete();
@@ -113,11 +115,11 @@ export class AngularSystemStorageService {
 
   /**
    * Save a storage item
-   * @param id - The ID of the item
+   * Uses the storage ID from the service instance
    * @param data - The data to save
    * @returns Observable of the saved item
    */
-  saveItem<T = StorageItem>(id: string, data: T): Observable<T> {
+  saveItem<T = StorageItem>(data: T): Observable<T> {
     return new Observable(observer => {
       if (!this.storageService) {
         observer.error(new Error('Service not initialized'));
@@ -125,7 +127,7 @@ export class AngularSystemStorageService {
       }
 
       this.storageService
-        .saveItem<T>(id, data)
+        .saveItem<T>(data)
         .then(result => {
           observer.next(result);
           observer.complete();
@@ -171,5 +173,25 @@ export class AngularSystemStorageService {
    */
   isLoading(): boolean {
     return this.tokenLoadingSubject.value;
+  }
+
+  /**
+   * Get the storage ID associated with this service instance
+   */
+  getId(): string | null {
+    if (!this.storageService) {
+      throw new Error('Service not initialized');
+    }
+    return this.storageService.getId();
+  }
+
+  /**
+   * Set the storage ID for this service instance
+   */
+  setId(id: string): void {
+    if (!this.storageService) {
+      throw new Error('Service not initialized');
+    }
+    this.storageService.setId(id);
   }
 }

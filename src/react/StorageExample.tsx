@@ -15,6 +15,7 @@ export function StorageExample() {
     logout 
   } = useStorageContext();
 
+  const [password, setPassword] = useState<string>('');
   const [itemData, setItemData] = useState<any>(null);
   const [itemError, setItemError] = useState<Error | null>(null);
   const [itemLoading, setItemLoading] = useState(false);
@@ -22,15 +23,21 @@ export function StorageExample() {
   // Request token on mount
   useEffect(() => {
     if (!token) {
-      requestToken();
+      // Token is not automatically requested; user must call it with a password
     }
-  }, []);
+  }, [token]);
+
+  const handleRequestToken = async () => {
+    if (password) {
+      await requestToken(password);
+    }
+  };
 
   // Fetch an item
   const handleGetItem = async () => {
     setItemLoading(true);
     setItemError(null);
-    const result = await getItem('my-item-id');
+    const result = await getItem();
     if (result.error) {
       setItemError(result.error);
     } else {
@@ -44,7 +51,7 @@ export function StorageExample() {
     const dataToSave = { name: 'Test Item', value: 42 };
     setItemLoading(true);
     setItemError(null);
-    const result = await saveItem('my-item-id', dataToSave);
+    const result = await saveItem(dataToSave);
     if (result.error) {
       setItemError(result.error);
     } else {
@@ -60,11 +67,17 @@ export function StorageExample() {
       {/* Token Section */}
       <section>
         <h2>Authentication</h2>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter password"
+        />
         {tokenLoading && <p>Loading token...</p>}
         {tokenError && <p style={{ color: 'red' }}>Error: {tokenError.message}</p>}
         {token && <p>✓ Authenticated with token: {token.substring(0, 20)}...</p>}
-        <button onClick={() => requestToken()} disabled={tokenLoading}>
-          {token ? 'Refresh Token' : 'Get Token'}
+        <button onClick={handleRequestToken} disabled={tokenLoading || !password}>
+          Get Token
         </button>
         {token && <button onClick={logout}>Logout</button>}
       </section>

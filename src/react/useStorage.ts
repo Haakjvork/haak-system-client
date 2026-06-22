@@ -15,9 +15,10 @@ export interface UseStorageState<T> {
  * Handles token management, item fetching, and updates
  * 
  * @param baseUrl - The base URL of the storage service
+ * @param id - Optional storage ID to associate with this service instance
  * @returns Storage service utilities and state management
  */
-export function useStorage(baseUrl: string) {
+export function useStorage(baseUrl: string, id?: string) {
   const serviceRef = useRef<SystemStorageService | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<Error | null>(null);
@@ -26,23 +27,23 @@ export function useStorage(baseUrl: string) {
   // Initialize service on mount
   useEffect(() => {
     if (!serviceRef.current) {
-      serviceRef.current = new SystemStorageService(baseUrl);
+      serviceRef.current = new SystemStorageService(baseUrl, id);
     }
-  }, [baseUrl]);
+  }, [baseUrl, id]);
 
   /**
    * Request and store an authentication token
+   * @param password - The password for authentication
    */
-  const requestToken = useCallback(async (): Promise<TokenResponse | null> => {
+  const requestToken = useCallback(async (password: string): Promise<TokenResponse | null> => {
     if (!serviceRef.current) return null;
 
     setTokenLoading(true);
     setTokenError(null);
 
     try {
-      const response = await serviceRef.current.getToken();
+      const response = await serviceRef.current.getToken(password);
       setToken(response.token);
-      serviceRef.current.setAuthToken(response.token);
       return response;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -55,9 +56,10 @@ export function useStorage(baseUrl: string) {
 
   /**
    * Retrieve a storage item
+   * Uses the storage ID from the service instance
    */
   const getItem = useCallback(
-    async <T = StorageItem>(id: string): Promise<UseStorageState<T>> => {
+    async <T = StorageItem>(): Promise<UseStorageState<T>> => {
       if (!serviceRef.current) {
         return {
           data: null,
@@ -67,7 +69,7 @@ export function useStorage(baseUrl: string) {
       }
 
       try {
-        const data = await serviceRef.current.getItem<T>(id);
+        const data = await serviceRef.current.getItem<T>();
         return { data, loading: false, error: null };
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
@@ -79,9 +81,10 @@ export function useStorage(baseUrl: string) {
 
   /**
    * Save a storage item
+   * Uses the storage ID from the service instance
    */
   const saveItem = useCallback(
-    async <T = StorageItem>(id: string, data: T): Promise<UseStorageState<T>> => {
+    async <T = StorageItem>(data: T): Promise<UseStorageState<T>> => {
       if (!serviceRef.current) {
         return {
           data: null,
@@ -91,7 +94,7 @@ export function useStorage(baseUrl: string) {
       }
 
       try {
-        const result = await serviceRef.current.saveItem<T>(id, data);
+        const result = await serviceRef.current.saveItem<T>(data);
         return { data: result, loading: false, error: null };
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
